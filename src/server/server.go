@@ -23,7 +23,7 @@ type Server struct {
 // fb40bc4b-1ef8-4e97-839f-b4a9cf8e5c10
 const DefaultID = "fb40bc4b1ef84e97839fb4a9cf8e5c10"
 
-type ServerConf struct {
+type Conf struct {
 	// Used and must be present if IntermediateCACerts is nil/empty
 	RootCACert *cert.KeyPair
 	// If nil/empty, one is generated. The peer and auth certs are created from the last one if present.
@@ -58,7 +58,7 @@ type ServerConf struct {
 	ID string
 }
 
-func Listen(conf *ServerConf) (*Server, error) {
+func Listen(conf *Conf) (*Server, error) {
 	s := &Server{
 		intermediateCACerts: conf.IntermediateCACerts,
 		peerCert:            conf.PeerCert,

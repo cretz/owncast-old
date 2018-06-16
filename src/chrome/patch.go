@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type PatchableLib struct {
+type patchableFile struct {
 	path            string
 	fileBytes       []byte
 	fileMode        os.FileMode
@@ -18,14 +18,37 @@ type PatchableLib struct {
 	existingCertLen int
 }
 
-func FindPatchableLib(startDir string, existingRootCADERBytes []byte) (lib *PatchableLib, err error) {
+type PatchableLib interface {
+	Path() string
+	Patch(replacementRootCADERBytes []byte) error
+}
+
+type UnpatchableLib interface {
+	Path() string
+	OrigPath() string
+	Unpatch() error
+}
+
+func FindPatchableLib(startDir string, existingRootCADERBytes []byte) (PatchableLib, error) {
+	return findPatchableFile(startDir, existingRootCADERBytes, false)
+}
+
+func FindUnpatchableLib(startDir string, existingRootCADERBytes []byte) (UnpatchableLib, error) {
+	return findPatchableFile(startDir, existingRootCADERBytes, true)
+}
+
+func findPatchableFile(startDir string, existingRootCADERBytes []byte, backup bool) (file *patchableFile, err error) {
+	fileSuffix := sharedLibSuffix
+	if backup {
+		fileSuffix += ".bak"
+	}
 	err = filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
-		if !strings.HasSuffix(info.Name(), sharedLibSuffix) {
+		if !strings.HasSuffix(info.Name(), fileSuffix) {
 			return nil
 		} else if fileBytes, err := ioutil.ReadFile(path); err != nil {
 			return err
 		} else if certIndex := bytes.Index(fileBytes, existingRootCADERBytes); certIndex != -1 {
-			lib = &PatchableLib{
+			file = &patchableFile{
 				path:            path,
 				fileBytes:       fileBytes,
 				fileMode:        info.Mode(),
@@ -38,13 +61,16 @@ func FindPatchableLib(startDir string, existingRootCADERBytes []byte) (lib *Patc
 	})
 	if err != nil && err != filepath.SkipDir {
 		return nil, err
-	} else if lib == nil {
+	} else if file == nil {
 		return nil, fmt.Errorf("Unable to find shared lib with cert")
 	}
 	return
 }
 
-func (p *PatchableLib) Patch(replacementRootCADERBytes []byte) error {
+func (p *patchableFile) Path() string     { return p.path }
+func (p *patchableFile) OrigPath() string { return strings.TrimSuffix(p.path, ".bak") }
+
+func (p *patchableFile) Patch(replacementRootCADERBytes []byte) error {
 	if p.fileBytes == nil {
 		return fmt.Errorf("Patch cannot be run a second time")
 	}
@@ -52,17 +78,29 @@ func (p *PatchableLib) Patch(replacementRootCADERBytes []byte) error {
 		return fmt.Errorf("Replacement not the same length as what it is replacing")
 	}
 	// First make backup
-	if err := ioutil.WriteFile(p.path+".bak", p.fileBytes, 0777); err != nil {
+	if err := ioutil.WriteFile(p.path+".bak", p.fileBytes, p.fileMode); err != nil {
 		return fmt.Errorf("Unable to make backup: %v", err)
 	}
 	// Now replace the bytes and write
 	for i, b := range replacementRootCADERBytes {
 		p.fileBytes[p.certIndex+i] = b
 	}
-	err := ioutil.WriteFile(p.path, p.fileBytes, 0777)
+	err := ioutil.WriteFile(p.path, p.fileBytes, p.fileMode)
 	p.fileBytes = nil
 	if err != nil {
 		return fmt.Errorf("Failed patching file %v", p.path)
+	}
+	return nil
+}
+
+func (p *patchableFile) Unpatch() error {
+	// Put bytes back
+	if err := ioutil.WriteFile(p.OrigPath(), p.fileBytes, p.fileMode); err != nil {
+		return fmt.Errorf("Unable to overwrite existing file from backup: %v", err)
+	}
+	// Delete backup
+	if err := os.Remove(p.path); err != nil {
+		return fmt.Errorf("Unpatched, but unable to remove backup: %v", err)
 	}
 	return nil
 }

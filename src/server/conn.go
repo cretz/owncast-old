@@ -10,7 +10,7 @@ import (
 	"net"
 
 	"github.com/cretz/owncast/src/server/cast_channel"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 type PendingConn struct {
