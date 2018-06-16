@@ -19,6 +19,28 @@ type KeyPair struct {
 	DERBytes []byte
 }
 
+func LoadFromFiles(certFile string, keyFile string) (*KeyPair, error) {
+	certBytes, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return nil, err
+	}
+	keyBytes, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return nil, err
+	}
+	certPEM, _ := pem.Decode(certBytes)
+	keyPEM, _ := pem.Decode(keyBytes)
+	return LoadFromBytes(certPEM.Bytes, keyPEM.Bytes)
+}
+
+func LoadFromBytes(certDERBytes []byte, keyPKCS1Bytes []byte) (*KeyPair, error) {
+	privKey, err := x509.ParsePKCS1PrivateKey(keyPKCS1Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed parsing PK: %v", err)
+	}
+	return &KeyPair{privKey, certDERBytes}, nil
+}
+
 func NewDefaultCertificateSubject(cn string) pkix.Name {
 	return pkix.Name{
 		CommonName:         cn,

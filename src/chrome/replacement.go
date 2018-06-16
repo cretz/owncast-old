@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/cretz/owncast/cert"
+	"github.com/cretz/owncast/src/cert"
 )
 
 func GenerateReplacementRootCA(
