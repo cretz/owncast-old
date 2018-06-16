@@ -12,6 +12,8 @@ import (
 	"io/ioutil"
 	"math/big"
 	"time"
+
+	"github.com/cretz/owncast/owncast/log"
 )
 
 type KeyPair struct {
@@ -20,6 +22,7 @@ type KeyPair struct {
 }
 
 func LoadFromFiles(certFile string, keyFile string) (*KeyPair, error) {
+	log.Debugf("Loading cert from %v and key from %v", certFile, keyFile)
 	certBytes, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, err
@@ -47,7 +50,7 @@ func NewDefaultCertificateSubject(cn string) pkix.Name {
 		Country:            []string{"US"},
 		Province:           []string{"TX"},
 		Locality:           []string{"Heart of"},
-		Organization:       []string{"Acme Co Inc"},
+		Organization:       []string{"Acme Co Inc."},
 		OrganizationalUnit: []string{"Cast-x"},
 	}
 }
@@ -130,6 +133,8 @@ func GenerateStandardKeyPair(
 	kp = &KeyPair{PrivKey: privKey}
 	if template == nil {
 		template = NewDefaultCertificateTemplate(NewDefaultCertificateSubject("Cast Cert"))
+		template.NotBefore = time.Now().Add(-10 * time.Minute)
+		template.NotAfter = template.NotBefore.Add(24 * time.Hour)
 	}
 	if kp.PrivKey == nil {
 		if kp.PrivKey, err = rsa.GenerateKey(rand.Reader, 2048); err != nil {
@@ -162,6 +167,7 @@ func (k *KeyPair) EncodeKeyPEM() []byte {
 }
 
 func (k *KeyPair) PersistToFiles(certFile string, keyFile string) error {
+	log.Debugf("Writing cert to %v and key to %v", certFile, keyFile)
 	if err := ioutil.WriteFile(certFile, k.EncodeCertPEM(), 0600); err != nil {
 		return err
 	}

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/cretz/owncast/owncast/chrome"
-	"github.com/cretz/owncast/owncast/util"
+	"github.com/cretz/owncast/owncast/log"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			util.LogInfo("Unpatching library from %v to %v", lib.Path(), lib.OrigPath())
+			log.Infof("Unpatching library from %v to %v", lib.Path(), lib.OrigPath())
 			return lib.Unpatch()
 		},
 	}

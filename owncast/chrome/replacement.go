@@ -1,11 +1,13 @@
 package chrome
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 
 	"github.com/cretz/owncast/owncast/cert"
+	"github.com/cretz/owncast/owncast/log"
 )
 
 func GenerateReplacementRootCA(
@@ -20,8 +22,18 @@ func GenerateReplacementRootCA(
 		template.Subject.OrganizationalUnit = []string{}
 	}
 	origOU := template.Subject.OrganizationalUnit[0]
-	// Try 50 times to reach the size
-	for tries := 0; tries < 50; tries++ {
+	privGivenInParam := privKey != nil
+	// Try X times to reach the size
+	const maxTries = 10
+	var err error
+	for tries := 1; tries <= maxTries; tries++ {
+		log.Debugf("Attempt %v/%v to generate key of %v bytes", tries, maxTries, existingDERBytesLen)
+		// New priv key each try if not given
+		if !privGivenInParam {
+			if privKey, err = rsa.GenerateKey(rand.Reader, 2048); err != nil {
+				return nil, fmt.Errorf("Unable to generate key: %v", err)
+			}
+		}
 		// Each try just appends 'x' to the OU until we hit at least the size
 		template.Subject.OrganizationalUnit[0] = origOU
 		myDERBytesLen := 0
@@ -37,7 +49,9 @@ func GenerateReplacementRootCA(
 				return kp, nil
 			}
 			template.Subject.OrganizationalUnit[0] += "x"
+			log.Debugf("Key of size %v isn't %v, changed OU to %v",
+				myDERBytesLen, existingDERBytesLen, template.Subject.OrganizationalUnit[0])
 		}
 	}
-	return nil, fmt.Errorf("Tried 50 times to reach size, couldn't")
+	return nil, fmt.Errorf("Tried %v times to reach size, failed", maxTries)
 }

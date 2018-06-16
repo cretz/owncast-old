@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 
+	"github.com/cretz/owncast/owncast/log"
 	"github.com/cretz/owncast/owncast/server/cast_channel"
 	"github.com/golang/protobuf/proto"
 )
@@ -22,6 +24,7 @@ func (s *Server) Accept() (*PendingConn, error) {
 	if s.tlsListener == nil {
 		return nil, fmt.Errorf("No listener")
 	}
+	log.Debugf("Waiting for connection")
 	conn, err := s.tlsListener.Accept()
 	if err != nil {
 		return nil, err
@@ -56,6 +59,7 @@ func (p *PendingConn) Auth() (*Conn, error) {
 	} else if authReq.Challenge == nil {
 		return nil, fmt.Errorf("Missing challenge")
 	}
+	log.Debugf("Received auth request: %v", authReq)
 	// Build auth response
 	authResp := &cast_channel.DeviceAuthMessage{
 		Response: &cast_channel.AuthResponse{
@@ -102,10 +106,23 @@ func (p *PendingConn) Auth() (*Conn, error) {
 		return nil, fmt.Errorf("Unknown sig algo: %v", authReq.Challenge.GetSignatureAlgorithm())
 	}
 	// Send off the auth request
+	log.Debugf("Sending auth response: %v", authResp)
 	if err = conn.SendProtoMessage(msg.GetNamespace(), authResp); err != nil {
 		return nil, fmt.Errorf("Failed sending auth message: %v", err)
 	}
 	return conn, nil
+}
+
+func (c *Conn) ReceivePayload() (*cast_channel.CastMessage, *Payload, error) {
+	msg, err := c.ReceiveMessage()
+	if err != nil {
+		return nil, nil, err
+	}
+	payload, err := UnmarshalPayload(msg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Unable to unmarshal payload: %v", err)
+	}
+	return msg, payload, nil
 }
 
 func (c *Conn) ReceiveMessage() (*cast_channel.CastMessage, error) {
@@ -124,10 +141,20 @@ func (c *Conn) ReceiveMessage() (*cast_channel.CastMessage, error) {
 	if err := proto.Unmarshal(byts, &msg); err != nil {
 		return nil, fmt.Errorf("Unable to unmarshal msg: %v", err)
 	}
+	log.Debugf("Received message: %v", &msg)
 	return &msg, nil
 }
 
+func (c *Conn) SendPayload(namespace string, payload interface{}) error {
+	byts, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Failed marshalling payload: %v", err)
+	}
+	return c.SendStringMessage(namespace, string(byts))
+}
+
 func (c *Conn) SendMessage(msg *cast_channel.CastMessage) error {
+	log.Debugf("Sending message: %v", msg)
 	byts, err := proto.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("Unable to marshal cast message: %v", err)

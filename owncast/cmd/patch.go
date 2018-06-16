@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/cretz/owncast/owncast/chrome"
-	"github.com/cretz/owncast/owncast/util"
+	"github.com/cretz/owncast/owncast/log"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +30,7 @@ func init() {
 				if !os.IsNotExist(err) {
 					return fmt.Errorf("Failed reading CA cert: %v", err)
 				}
-				util.LogInfo("Creating new root CA cert and saving as ca.crt and ca.key in %v", certDirAbs)
+				log.Infof("Creating new root CA cert and saving as ca.crt and ca.key in %v", certDirAbs)
 				kp, err := chrome.GenerateReplacementRootCA(len(existingCA), nil, nil)
 				if err != nil {
 					return fmt.Errorf("Unable to gen replacement root CA: %v", err)
@@ -39,13 +40,14 @@ func init() {
 				}
 				certBytes = kp.EncodeCertPEM()
 			}
+			certByteBlock, _ := pem.Decode(certBytes)
 			// Find lib and patch
 			lib, err := chrome.FindPatchableLib(args[0], existingCA)
 			if err != nil {
 				return err
 			}
-			util.LogInfo("Patching library at: %v", lib.Path())
-			return lib.Patch(certBytes)
+			log.Infof("Patching library at: %v", lib.Path())
+			return lib.Patch(certByteBlock.Bytes)
 		},
 	}
 	rootCmd.AddCommand(patchCmd)

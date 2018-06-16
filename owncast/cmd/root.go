@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cretz/owncast/owncast/util"
+	"github.com/cretz/owncast/owncast/log"
 	"github.com/spf13/cobra"
 )
 
@@ -18,18 +18,19 @@ var rootCmd = &cobra.Command{
 		if verbose && quiet {
 			return fmt.Errorf("Cannot set verbose and quiet")
 		} else if verbose {
-			util.LogDebug = util.SimpleLogger
+			log.Debugf = log.SimpleLogf
 		} else if quiet {
-			util.LogInfo = util.NoopLogger
+			log.Infof = log.NoopLogf
 		}
 		return nil
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&certDir, "cert-dir", ".", "Sets the dir to load/create ca.crt and ca.key")
-	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show debug logs")
-	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "Hide info logs")
+	rootCmd.PersistentFlags().StringVarP(&certDir,
+		"cert-dir", "d", ".", "Sets the dir to load/create ca.crt and ca.key")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show debug logs")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Hide info logs")
 }
 
 func Execute() {

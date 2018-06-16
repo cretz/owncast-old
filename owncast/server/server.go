@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/cretz/owncast/owncast/cert"
+	"github.com/cretz/owncast/owncast/log"
 	"github.com/grandcat/zeroconf"
 )
 
@@ -71,6 +72,7 @@ func Listen(conf *Conf) (*Server, error) {
 		if conf.RootCACert == nil {
 			return nil, fmt.Errorf("RootCACert is required if IntermediateCACerts is empty")
 		}
+		log.Debugf("Generating intermediate CA certs")
 		interCert, err := cert.GenerateIntermediateCAKeyPair(conf.RootCACert, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to generate intermediate cert: %v", err)
@@ -81,11 +83,13 @@ func Listen(conf *Conf) (*Server, error) {
 	// Generate the peer and auth certs if not present
 	var err error
 	if s.peerCert == nil {
+		log.Debugf("Generating peer cert")
 		if s.peerCert, err = cert.GenerateStandardKeyPair(lastInterCert, nil, nil); err != nil {
 			return nil, fmt.Errorf("Unable to create peer cert: %v", err)
 		}
 	}
 	if s.authCert == nil {
+		log.Debugf("Generating auth cert")
 		if s.authCert, err = cert.GenerateStandardKeyPair(lastInterCert, nil, nil); err != nil {
 			return nil, fmt.Errorf("Unable to create auth cert: %v", err)
 		}
@@ -104,6 +108,7 @@ func Listen(conf *Conf) (*Server, error) {
 		}
 		var tlsCert tls.Certificate
 		if tlsCert, err = s.peerCert.CreateTLSCertificate(); err == nil {
+			log.Debugf("Starting TLS listener on %v", tlsAddr)
 			s.tlsListener, err = tls.Listen(tlsNet, tlsAddr, &tls.Config{Certificates: []tls.Certificate{tlsCert}})
 		}
 	}
@@ -111,6 +116,7 @@ func Listen(conf *Conf) (*Server, error) {
 	port := -1
 	if err == nil {
 		if addr, ok := s.tlsListener.Addr().(*net.TCPAddr); ok {
+			log.Debugf("TLS listening on %v", addr)
 			port = addr.Port
 		} else {
 			err = fmt.Errorf("TLS listener addr is not TCP")
@@ -140,11 +146,11 @@ func Listen(conf *Conf) (*Server, error) {
 			broadcastText = append(broadcastText, k+"="+v)
 		}
 		// Start the server
-		// return zeroconf.Register("TestCase", "_googlecast._tcp", "local.", port, text, nil)
 		instName := conf.BroadcastInstanceName
 		if instName == "" {
 			instName = "OwnCast"
 		}
+		log.Debugf("Broadcasting mDNS for %v on port %v with TXT %v", instName, port, broadcastText)
 		s.mdnsServer, err = zeroconf.Register(instName, "_googlecast._tcp", "local.", port,
 			broadcastText, conf.BroadcastIfaces)
 	}
@@ -173,10 +179,12 @@ func DefaultBroadcastText(id string) map[string]string {
 
 func (s *Server) Close() (err error) {
 	if s.mdnsServerShutdownOnClose && s.mdnsServer != nil {
+		log.Debugf("Closing mDNS server")
 		s.mdnsServer.Shutdown()
 		s.mdnsServer = nil
 	}
 	if s.tlsListenerCloseOnClose && s.tlsListener != nil {
+		log.Debugf("Closing TLS listener")
 		err = s.tlsListener.Close()
 		s.tlsListener = nil
 	}

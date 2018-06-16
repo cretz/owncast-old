@@ -75,7 +75,8 @@ func (p *patchableFile) Patch(replacementRootCADERBytes []byte) error {
 		return fmt.Errorf("Patch cannot be run a second time")
 	}
 	if p.existingCertLen != len(replacementRootCADERBytes) {
-		return fmt.Errorf("Replacement not the same length as what it is replacing")
+		return fmt.Errorf("Replacement byte size %v != existing byte size %v",
+			len(replacementRootCADERBytes), p.existingCertLen)
 	}
 	// First make backup
 	if err := ioutil.WriteFile(p.path+".bak", p.fileBytes, p.fileMode); err != nil {
