@@ -1,6 +1,6 @@
 package main
 
-import "github.com/cretz/owncast/src/cli/cmd"
+import "github.com/cretz/owncast/owncast/cmd"
 
 func main() {
 	cmd.Execute()

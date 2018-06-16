@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/cretz/owncast/src/chrome"
-	"github.com/cretz/owncast/src/util"
+	"github.com/cretz/owncast/owncast/chrome"
+	"github.com/cretz/owncast/owncast/util"
 	"github.com/spf13/cobra"
 )
 

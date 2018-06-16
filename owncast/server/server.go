@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/cretz/owncast/src/cert"
+	"github.com/cretz/owncast/owncast/cert"
 	"github.com/grandcat/zeroconf"
 )
 

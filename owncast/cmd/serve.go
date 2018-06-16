@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/cretz/owncast/src/cert"
-	"github.com/cretz/owncast/src/server"
+	"github.com/cretz/owncast/owncast/cert"
+	"github.com/cretz/owncast/owncast/server"
 	"github.com/spf13/cobra"
 )
 

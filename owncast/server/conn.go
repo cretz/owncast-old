@@ -9,7 +9,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/cretz/owncast/src/server/cast_channel"
+	"github.com/cretz/owncast/owncast/server/cast_channel"
 	"github.com/golang/protobuf/proto"
 )
 

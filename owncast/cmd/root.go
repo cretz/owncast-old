@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cretz/owncast/src/util"
+	"github.com/cretz/owncast/owncast/util"
 	"github.com/spf13/cobra"
 )
 
