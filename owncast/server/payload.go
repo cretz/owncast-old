@@ -13,15 +13,15 @@ type Payload struct {
 	JSON      string `json:"-"`
 }
 
-func UnmarshalPayload(msg *cast_channel.CastMessage) (*Payload, error) {
+func (p *Payload) UnmarshalPayload(msg *cast_channel.CastMessage) error {
 	if msg.PayloadUtf8 == nil {
-		return nil, fmt.Errorf("Missing string payload")
+		return fmt.Errorf("Missing string payload")
 	}
-	ret := &Payload{JSON: *msg.PayloadUtf8}
-	if err := json.Unmarshal([]byte(ret.JSON), ret); err != nil {
-		return nil, fmt.Errorf("Failed parsing JSON: %v", err)
+	p.JSON = *msg.PayloadUtf8
+	if err := json.Unmarshal([]byte(p.JSON), p); err != nil {
+		return fmt.Errorf("Failed parsing JSON: %v", err)
 	}
-	return ret, nil
+	return nil
 }
 
 type ConnectPayload struct {
@@ -30,11 +30,6 @@ type ConnectPayload struct {
 	Origin     map[string]interface{}
 	SenderInfo map[string]interface{}
 	UserAgent  string
-}
-
-func (p *Payload) ParseConnect() (*ConnectPayload, error) {
-	var ret ConnectPayload
-	return &ret, json.Unmarshal([]byte(p.JSON), &ret)
 }
 
 type AppID string
@@ -49,11 +44,6 @@ type GetAppAvailabilityRequestPayload struct {
 	AppID []AppID
 }
 
-func (p *Payload) ParseGetAppAvailabilityRequest() (*GetAppAvailabilityRequestPayload, error) {
-	var ret GetAppAvailabilityRequestPayload
-	return &ret, json.Unmarshal([]byte(p.JSON), &ret)
-}
-
 type AppAvailability string
 
 const (
@@ -64,4 +54,35 @@ const (
 type GetAppAvailabilityResponsePayload struct {
 	Payload
 	Availability map[AppID]AppAvailability `json:"availability"`
+}
+
+type GetReceiverStatusResponsePayload struct {
+	Payload
+	Status *ReceiverStatus `json:"status,omitempty"`
+}
+
+type ReceiverStatus struct {
+	Applications  []*ApplicationSession `json:"applications"`
+	IsActiveInput bool                  `json:"isActiveInput,omitempty"`
+	Volume        *Volume               `json:"volume,omitempty"`
+}
+
+type ApplicationSession struct {
+	AppID       string   `json:"appId,omitempty"`
+	DisplayName string   `json:"displayName,omitempty"`
+	Namespaces  []string `json:"namespaces"`
+	SessionID   string   `json:"sessionId,omitempty"`
+	StatusText  string   `json:"statusText,omitempty"`
+	TransportID string   `json:"transportId,omitempty"`
+}
+
+type Volume struct {
+	Level float64 `json:"level,omitempty"`
+	Muted bool    `json:"muted"`
+}
+
+type LaunchPayload struct {
+	Payload
+	AppID    string
+	Language string
 }

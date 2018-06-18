@@ -45,63 +45,28 @@ func RunServerInteractively(s *Server, input UserInput) error {
 }
 
 // Closes conn when done
-func RunConnInteractively(connIndex int, pconn *PendingConn, input UserInput) error {
-	defer pconn.Close()
-	conn, err := pconn.Auth()
-	if err != nil {
-		return fmt.Errorf("Failed auth: %v", err)
-	}
-	connected := false
-	for {
-		msg, payload, err := conn.ReceivePayload()
-		if err != nil {
-			return err
+func RunConnInteractively(connIndex int, conn *Conn, input UserInput) error {
+	defer conn.Close()
+	defer func() {
+		if conn.Connected {
+			conn.SendPayload("urn:x-cast:com.google.cast.tp.connection", closePayload)
 		}
-		switch ns := msg.GetNamespace(); ns {
-		case "urn:x-cast:com.google.cast.tp.heartbeat":
-			if payload.Type != "PING" {
-				return fmt.Errorf("Expected ping, got %v", payload)
-			}
-			conn.SendPayload(ns, pongPayload)
-		case "urn:x-cast:com.google.cast.tp.connection":
-			if payload.Type != "CONNECT" {
-				log.Debugf("Ignoring unknown connection payload: %v", payload)
-			} else if connected {
-				return fmt.Errorf("Attempted connect while already connected")
-			} else {
-				connect, err := payload.ParseConnect()
-				if err != nil {
-					return fmt.Errorf("Unable to parse connect message: %v", err)
-				}
-				connected = true
-				input.Printfln(connIndex, "Client connected, sender info: %v", connect.SenderInfo)
-				defer conn.SendPayload(ns, closePayload)
-			}
-		case "urn:x-cast:com.google.cast.receiver":
-			switch payload.Type {
-			case "GET_APP_AVAILABILITY":
-				// Just say they're all available
-				req, err := payload.ParseGetAppAvailabilityRequest()
-				if err != nil {
-					return fmt.Errorf("Unable to parse app avail request: %v", err)
-				}
-				log.Debugf("Got app avail request: %v", req)
-				resp := &GetAppAvailabilityResponsePayload{
-					Payload:      req.Payload,
-					Availability: make(map[AppID]AppAvailability, len(req.AppID)),
-				}
-				for _, appID := range req.AppID {
-					resp.Availability[appID] = AppAvailable
-				}
-				conn.SendPayload(ns, resp)
-			default:
-				log.Debugf("Ignoring unknown receiver command: %v", payload)
+	}()
+	for {
+		msg, err := conn.ReceiveMessage()
+		if err != nil {
+			return fmt.Errorf("Unable to parse message: %v", err)
+		}
+		switch msg := msg.(type) {
+		case MessageWithHandleDefault:
+			if err = msg.HandleDefault(conn); err != nil {
+				return fmt.Errorf("Failed handling message: %v", err)
 			}
 		default:
-			log.Debugf("Ignoring unknown namespace %v", ns)
+			// TODO: interactive responses
+			log.Debugf("Ignoring unknown message: %v", msg)
 		}
 	}
 }
 
-var pongPayload = &Payload{Type: "PONG"}
 var closePayload = &Payload{Type: "CLOSE"}
