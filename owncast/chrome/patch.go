@@ -42,8 +42,11 @@ func findPatchableFile(startDir string, existingRootCADERBytes []byte, backup bo
 	if backup {
 		fileSuffix += ".bak"
 	}
+
 	err = filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
 		if !strings.HasSuffix(info.Name(), fileSuffix) {
+			return nil
+		} else if info.IsDir() {
 			return nil
 		} else if fileBytes, err := ioutil.ReadFile(path); err != nil {
 			return err
@@ -112,6 +115,8 @@ func init() {
 	switch runtime.GOOS {
 	case "windows":
 		sharedLibSuffix = ".dll"
+	case "darwin":
+		sharedLibSuffix = "Framework"
 	// TODO: need to test others
 	default:
 		panic(fmt.Errorf("OS not supported yet: %v", runtime.GOOS))
