@@ -99,7 +99,7 @@ func (c *Conn) SendProtoMessage(namespace string, msg proto.Message) error {
 func (c *Conn) SendBinaryMessage(namespace string, msg []byte) error {
 	version := cast_channel.CastMessage_CASTV2_1_0
 	sourceID := "receiver-0"
-	destinationID := "sender-0"
+	destinationID := "*"
 	payloadType := cast_channel.CastMessage_BINARY
 	return c.SendMessage(&cast_channel.CastMessage{
 		ProtocolVersion: &version,
@@ -114,7 +114,7 @@ func (c *Conn) SendBinaryMessage(namespace string, msg []byte) error {
 func (c *Conn) SendStringMessage(namespace string, msg string) error {
 	version := cast_channel.CastMessage_CASTV2_1_0
 	sourceID := "receiver-0"
-	destinationID := "sender-0"
+	destinationID := "*"
 	payloadType := cast_channel.CastMessage_STRING
 	return c.SendMessage(&cast_channel.CastMessage{
 		ProtocolVersion: &version,
